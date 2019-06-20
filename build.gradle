@@ -194,9 +194,10 @@ task debugApp(type: JavaExec, dependsOn: [assemble, 'thorntail-package']) {
   }
 }
 
+// Displays project dependency tree.
 task allDeps(type: DependencyReportTask) {}
 
-// thorntail-gradle-plugin fails to sync local m2 repo with dependencies when useUberJar=false.
+// thorntail-gradle-plugin fails to sync local m2 repo with dependencies when thorntail/useUberJar=false.
 task syncM2(type: Copy) {
   from new File(gradle.gradleUserHomeDir, 'caches/modules-2/files-2.1')
   into repositories.mavenLocal().url
