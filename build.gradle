@@ -1,10 +1,10 @@
 /***************************************************************************************************
  * From cmd-line:
  *   Build: ./gradlew clean build -x test
- *   Run: java -jar .\build\libs\sample-project-thorntail.jar
+ *   Debug: gradlew debugApp
+ *     Run: java -jar .\build\libs\sample-project-thorntail.jar
  *
- * Browser URL's:
- *   http://localhost:8080/api/swagger.json (Not configured)
+ * Exposed URL's:
  *   http://localhost:8080/health           (System health)
  *   http://localhost:8080/metrics          (System metrics)
  *   http://localhost:8080/openapi          (gets OpenAPI V3 YAML)
@@ -20,13 +20,7 @@
  * See https://access.redhat.com/documentation/en-us/red_hat_openshift_application_runtimes/1/html/thorntail_runtime_guide/thorntail_fractions_reference
  **************************************************************************************************/
 
-// HATEOAS???
-// https://rmannibucau.metawerx.net/post/microprofile-openapi-swagger-ui
-// SwaggerArchivePreparer
-// https://medium.com/criciumadev/first-microprofile-io-application-using-java-module-system-33b83ae939c9
-// https://microprofile.io/2019/06/11/eclipse-microprofile-3-0-is-now-available/
-// https://www.youtube.com/watch?v=HguM1tCE_FI
-buildscript {
+buildscript { // Script plugins.
   repositories {
     mavenCentral()
   }
@@ -35,12 +29,13 @@ buildscript {
   }
 }
 
-plugins { // Core Gradle plugins
+plugins { // Core plugins and repo plugins (https://plugins.gradle.org).
   id 'jacoco'
   id 'java-library'
   id 'war'
 }
 
+// Apply classpath and deplared plugins (e.g., apply false).
 apply plugin: 'thorntail'
 apply plugin: 'thorntail-arquillian'
 
@@ -63,40 +58,7 @@ repositories {
   }
 }
 
-// -agentlib:jdwp=transport=dt_socket,address=127.0.0.1:8888,server=y,suspend=n
-task debugApp(type: JavaExec, dependsOn: [assemble, 'thorntail-package']) {
-  jvmArgs += '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=127.0.0.1:8787'
-  main = '-jar'
-
-  doFirst() {
-	File file = (project.tasks['jar'].destinationDir as File).listFiles(new FilenameFilter() {
-	  @Override
-	  boolean accept(File dir, String name) {
-		return name.endsWith('-thorntail.jar')
-	  }
-	}).first()
-	args file.absolutePath
-  }
-}
-
-thorntail { // https://github.com/thorntail/thorntail/blob/master/docs/modules/ref_thorntail-maven-plugin-configuration-options.adoc
-  properties {
-    swarm.http.port = 8080
-  }
-  bundleDependencies = true
-  fractions = ['cdi', 'datasources', 'jaxrs', 'jpa', 'jsonb', 'jsonp', 'logging', 'management', 'management-console',
-               'microprofile-health', 'microprofile-jwt', 'microprofile-metrics', 'microprofile-openapi', 'transactions']
-  // force, never, when_missing
-  fractionDetectMode = 'when_missing'
-  jvmArguments = ['-XX:InitialHeapSize=2g', '-XX:MaxHeapSize=4g']
-  // Create jar containg Maven repository of dependencies instead of using local m2 repo.
-  useUberJar = true
-}
-
 dependencies {
-//	implementation(enforcedPlatform("io.thorntail:bom-all:$thorntailVersion")) {
-//	  because "this application relies on the Thorntail MicroProfile platform"
-//	}
 	implementation(platform("io.thorntail:bom-all:$thorntailVersion")) {
 		because "this application relies on the Thorntail MicroProfile platform"
 	}
@@ -146,25 +108,23 @@ dependencies {
 	// ...Thorntail fractions
 
 	// Throntail fractions NOT in BOM
-    implementation "io.thorntail:swagger:$thorntailVersion"
     implementation "io.thorntail:swagger-webapp:$thorntailVersion"
 
 	// For demo only...
 	implementation 'com.h2database:h2:1.4.199'
 	
 	// Added utilities...
-	// https://mvnrepository.com/artifact/org.projectlombok/lombok
     annotationProcessor 'org.projectlombok:lombok:1.18.8'
     implementation 'org.projectlombok:lombok:1.18.8'
 	
-		// Include the Thorntail BOM for testing the code.
-//        testImplementation(enforcedPlatform("io.thorntail:bom:$thorntailVersion"))
+    // Include the Thorntail BOM for testing the code.
+    testImplementation(enforcedPlatform("io.thorntail:bom:$thorntailVersion"))
 
-		testImplementation "junit:junit:4.12"
-		testImplementation("io.thorntail:gradle-arquillian-adapter:$thorntailVersion")
+    testImplementation "junit:junit:4.12"
+    testImplementation("io.thorntail:gradle-arquillian-adapter:$thorntailVersion")
 
-		// Include the Arquillian JaCoCo extension
-		testImplementation "org.jboss.arquillian.extension:arquillian-jacoco:1.0.0.Alpha9"
+    // Include the Arquillian JaCoCo extension
+    testImplementation "org.jboss.arquillian.extension:arquillian-jacoco:1.0.0.Alpha9"
   }
 
   // Configure the properties required for enabling the JaCoCo agent withing Arquillian tests
@@ -182,7 +142,23 @@ dependencies {
 	}
 }
 
-// thorntail-gradle-plugin workaround for bug which fails to sync local m2 repo with dependencies when useUberJar=false.
+// Run UberJar for debugging.
+task debugApp(type: JavaExec, dependsOn: [assemble, 'thorntail-package']) {
+  jvmArgs += '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=127.0.0.1:8787'
+  main = '-jar'
+
+  doFirst() {
+	File file = (project.tasks['jar'].destinationDir as File).listFiles(new FilenameFilter() {
+	  @Override
+	  boolean accept(File dir, String name) {
+		return name.endsWith('-thorntail.jar')
+	  }
+	}).first()
+	args file.absolutePath
+  }
+}
+
+// thorntail-gradle-plugin fails to sync local m2 repo with dependencies when useUberJar=false.
 task syncM2(type: Copy) {
   from new File(gradle.gradleUserHomeDir, 'caches/modules-2/files-2.1')
   into repositories.mavenLocal().url
@@ -191,4 +167,18 @@ task syncM2(type: Copy) {
     it.path = (parts[0].replace('.', '/') + '/' + parts[1]).replace('.', '/') + '/' + parts[2] + '/' + parts[4]
   }
   includeEmptyDirs false
+}
+
+// See https://github.com/thorntail/thorntail/blob/master/docs/modules/ref_thorntail-maven-plugin-configuration-options.adoc
+thorntail {
+  properties {
+    swarm.http.port = 8080
+  }
+  bundleDependencies = true
+  fractions = []
+  // force, never, when_missing
+  fractionDetectMode = 'when_missing'
+  jvmArguments = ['-XX:InitialHeapSize=2g', '-XX:MaxHeapSize=4g']
+  // Create jar containing Maven repository of dependencies instead of using local m2 repo.
+  useUberJar = true
 }
