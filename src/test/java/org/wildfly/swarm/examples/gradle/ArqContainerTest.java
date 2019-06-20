@@ -5,6 +5,7 @@ import javax.inject.Inject;
 
 import org.arj.thornbird.demo.app.Greeter;
 import org.jboss.arquillian.junit.Arquillian;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.wildfly.swarm.arquillian.DefaultDeployment;
@@ -25,6 +26,7 @@ public class ArqContainerTest {
     /**
      * Verify that we are able to execute the test within the container.
      */
+    @Ignore
     @Test
     public void testInjection() {
         assertNotNull(CDI.current());

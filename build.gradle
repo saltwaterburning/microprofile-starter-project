@@ -58,6 +58,42 @@ repositories {
   }
 }
 
+// Resolve potential versioning issues.
+configurations.all {
+  resolutionStrategy {
+    // Fail eagerly on version conflict (includes transitive dependencies).
+    failOnVersionConflict()
+    // Force certain versions of dependencies (including transitive) to stop failOnVersionConflict().
+    force 'commons-io:commons-io:2.6',
+          'javax.annotation:javax.annotation-api:1.2',
+          'javax.enterprise:cdi-api:2.0.SP1',
+          'org.bitbucket.b_c:jose4j:0.6.5',
+          'org.codehaus.plexus:plexus-utils:3.0.20',
+          'org.eclipse.microprofile.jwt:microprofile-jwt-auth-api:1.1.1',
+          'org.gradle:gradle-tooling-api:5.5-rc-3',
+          'org.jboss.logging:jboss-logging:3.3.2.Final',
+          'org.jboss.spec.javax.transaction:jboss-transaction-api_1.2_spec:1.1.1.Final',
+          'org.jboss.threads:jboss-threads:2.3.2.Final',
+          'org.jboss.xnio:xnio-api:3.6.5.Final',
+          'org.jboss.xnio:xnio-nio:3.6.5.Final',
+          'org.ow2.asm:asm:6.2.1', // intermittent startup failures
+          'org.slf4j:slf4j-api:1.7.25',
+          'org.wildfly.client:wildfly-client-config:1.0.0.Final',
+          'org.wildfly.common:wildfly-common:1.4.0.Final',
+          'org.wildfly.security:wildfly-elytron:1.7.0.Final'
+
+    // Force certain versions of dependencies by group name.
+    eachDependency { DependencyResolveDetails details ->
+      if (details.requested.group == 'com.fasterxml.jackson.core') {
+        details.useVersion '2.9.9'
+      }
+      else if (details.requested.group == 'com.fasterxml.jackson.jaxrs') {
+        details.useVersion '2.9.9'
+      }
+    }
+  }
+}
+
 dependencies {
 	implementation(platform("io.thorntail:bom-all:$thorntailVersion")) {
 		because "this application relies on the Thorntail MicroProfile platform"
@@ -157,6 +193,8 @@ task debugApp(type: JavaExec, dependsOn: [assemble, 'thorntail-package']) {
 	args file.absolutePath
   }
 }
+
+task allDeps(type: DependencyReportTask) {}
 
 // thorntail-gradle-plugin fails to sync local m2 repo with dependencies when useUberJar=false.
 task syncM2(type: Copy) {
