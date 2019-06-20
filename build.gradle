@@ -1,0 +1,194 @@
+/***************************************************************************************************
+ * From cmd-line:
+ *   Build: ./gradlew clean build -x test
+ *   Run: java -jar .\build\libs\sample-project-thorntail.jar
+ *
+ * Browser URL's:
+ *   http://localhost:8080/api/swagger.json (Not configured)
+ *   http://localhost:8080/health           (System health)
+ *   http://localhost:8080/metrics          (System metrics)
+ *   http://localhost:8080/openapi          (gets OpenAPI V3 YAML)
+ *   http://localhost:8080/swagger-ui/index.html?url=/openapi (View in Swagger UI)
+ *
+ * The buildscript thorntail-gradle-plugin adds the following tasks:
+ *   thorntail-package (hooks on build target)
+ *   thorntail-run (only when useUberJar=true)
+ *   thorntail-start (only when useUberJar=true)
+ *   thorntail-stop (only when useUberJar=true)
+ *
+ * See https://thorntail.io/documentation/
+ * See https://access.redhat.com/documentation/en-us/red_hat_openshift_application_runtimes/1/html/thorntail_runtime_guide/thorntail_fractions_reference
+ **************************************************************************************************/
+
+// HATEOAS???
+// https://rmannibucau.metawerx.net/post/microprofile-openapi-swagger-ui
+// SwaggerArchivePreparer
+// https://medium.com/criciumadev/first-microprofile-io-application-using-java-module-system-33b83ae939c9
+// https://microprofile.io/2019/06/11/eclipse-microprofile-3-0-is-now-available/
+// https://www.youtube.com/watch?v=HguM1tCE_FI
+buildscript {
+  repositories {
+    mavenCentral()
+  }
+  dependencies {
+    classpath "io.thorntail:thorntail-gradle-plugin:$thorntailVersion"
+  }
+}
+
+plugins { // Core Gradle plugins
+  id 'jacoco'
+  id 'java-library'
+  id 'war'
+}
+
+apply plugin: 'thorntail'
+apply plugin: 'thorntail-arquillian'
+
+group = theGroup
+version = theVersion
+sourceCompatibility = theSourceCompatibility
+targetCompatibility = theSourceCompatibility
+  
+repositories {
+  jcenter() // https://bintray.com/bintray/jcenter
+  mavenLocal() // ~/.m2/settings.xml
+  mavenCentral()
+  maven {
+    name 'JBoss Nexus'
+    url 'https://repository.jboss.org/nexus/content/repositories/thirdparty-releases/'
+  }
+  maven {
+    name 'Gradle Tooling'
+    url 'https://repo.gradle.org/gradle/libs-releases/'
+  }
+}
+
+// -agentlib:jdwp=transport=dt_socket,address=127.0.0.1:8888,server=y,suspend=n
+task debugApp(type: JavaExec, dependsOn: [assemble, 'thorntail-package']) {
+  jvmArgs += '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=127.0.0.1:8787'
+  main = '-jar'
+
+  doFirst() {
+	File file = (project.tasks['jar'].destinationDir as File).listFiles(new FilenameFilter() {
+	  @Override
+	  boolean accept(File dir, String name) {
+		return name.endsWith('-thorntail.jar')
+	  }
+	}).first()
+	args file.absolutePath
+  }
+}
+
+thorntail { // https://github.com/thorntail/thorntail/blob/master/docs/modules/ref_thorntail-maven-plugin-configuration-options.adoc
+  properties {
+    swarm.http.port = 8080
+  }
+  bundleDependencies = true
+  fractions = ['cdi', 'datasources', 'jaxrs', 'jpa', 'jsonb', 'jsonp', 'logging', 'management', 'management-console',
+               'microprofile-health', 'microprofile-jwt', 'microprofile-metrics', 'microprofile-openapi', 'transactions']
+  // force, never, when_missing
+  fractionDetectMode = 'when_missing'
+  jvmArguments = ['-XX:InitialHeapSize=2g', '-XX:MaxHeapSize=4g']
+  // Create jar containg Maven repository of dependencies instead of using local m2 repo.
+  useUberJar = true
+}
+
+dependencies {
+//	implementation(enforcedPlatform("io.thorntail:bom-all:$thorntailVersion")) {
+//	  because "this application relies on the Thorntail MicroProfile platform"
+//	}
+	implementation(platform("io.thorntail:bom-all:$thorntailVersion")) {
+		because "this application relies on the Thorntail MicroProfile platform"
+	}
+  
+	// Thortail fractions...
+//    implementation "io.thorntail:bean-validation"
+	implementation "io.thorntail:cdi" // Contexts and Dependency Injection (CDI)
+//    implementation "io.thorntail:cdi-config"
+    implementation "io.thorntail:datasources" // Provides support for container-managed database connections.
+//    implementation "io.thorntail:ejb" // Enterprise Java Beans
+//    implementation "io.thorntail:hibernate-validator"
+	implementation "io.thorntail:jaxrs" // Java API for RESTful Web Services (JAX-RS)
+//    implementation "io.thorntail:jaxrs-jaxb" // JAX-RS + Java Architecture for XML Binding (JAXB)
+//    implementation "io.thorntail:jaxrs-jsonb"
+//    implementation "io.thorntail:jaxrs-jsonp"
+//    implementation "io.thorntail:jaxrs-multipart"
+//    implementation "io.thorntail:jaxrs-validator"
+//    implementation "io.thorntail:jca" // Java EE Connector Architecture (JCA)
+//    implementation "io.thorntail:jmx" // Java Management Extensions (JMX)
+	implementation "io.thorntail:jpa" // Java Persistence API (JPA)
+	implementation "io.thorntail:jsonb" // Java API for JSON Binding (JSON-B)
+	implementation "io.thorntail:jsonp" //  Java API for JSON Processing (JSON-P)
+//    implementation "io.thorntail:jsf" // Java Server Faces v2.3 (JSF)
+//    implementation "io.thorntail:jsp" // Java Server Pages (JSP)
+//    implementation "io.thorntail:keycloak" // Single sign-on with Identity Management and Access Management
+	implementation "io.thorntail:logging"
+    implementation "io.thorntail:management"
+    implementation "io.thorntail:management-console"
+//    implementation "io.thorntail:microprofile"
+//    implementation "io.thorntail:microprofile-config"
+//    implementation "io.thorntail:microprofile-demo"
+//    implementation "io.thorntail:microprofile-fault-tolerance"
+	implementation "io.thorntail:microprofile-health"
+	implementation "io.thorntail:microprofile-jwt"
+	implementation "io.thorntail:microprofile-metrics"
+	implementation "io.thorntail:microprofile-openapi"
+//    implementation "io.thorntail:microprofile-opentracing"
+//    implementation "io.thorntail:naming" // Java Naming and Directory Interface (JNDI)
+//    implementation "io.thorntail:opentracing"
+//    implementation "io.thorntail:opentracing-tracerresolver"
+//    implementation "io.thorntail:resource-adapters"
+//    implementation "io.thorntail:security" // Java Authentication and Authorization Service (JAAS)
+//    implementation "io.thorntail:topology"
+//    implementation "io.thorntail:topology-openshift"
+	implementation "io.thorntail:transactions" // Java Transaction API (JTA)
+//    implementation "io.thorntail:undertow" // High performance non-blocking webserver
+	// ...Thorntail fractions
+
+	// Throntail fractions NOT in BOM
+    implementation "io.thorntail:swagger:$thorntailVersion"
+    implementation "io.thorntail:swagger-webapp:$thorntailVersion"
+
+	// For demo only...
+	implementation 'com.h2database:h2:1.4.199'
+	
+	// Added utilities...
+	// https://mvnrepository.com/artifact/org.projectlombok/lombok
+    annotationProcessor 'org.projectlombok:lombok:1.18.8'
+    implementation 'org.projectlombok:lombok:1.18.8'
+	
+		// Include the Thorntail BOM for testing the code.
+//        testImplementation(enforcedPlatform("io.thorntail:bom:$thorntailVersion"))
+
+		testImplementation "junit:junit:4.12"
+		testImplementation("io.thorntail:gradle-arquillian-adapter:$thorntailVersion")
+
+		// Include the Arquillian JaCoCo extension
+		testImplementation "org.jboss.arquillian.extension:arquillian-jacoco:1.0.0.Alpha9"
+  }
+
+  // Configure the properties required for enabling the JaCoCo agent withing Arquillian tests
+  test {
+	doFirst {
+	  // Gradle starts the test task with the JaCoCo agent configured.
+	  // The Arquillian tests are run in a separate thread which does not have the JaCoCo agent enabled.
+	  // In the below code, we retrieve the JaCoCo details and make it available as a system property that is
+	  // consumed by the "arquillian.xml" file in the "test/resources" folder.
+	  String arg = jacoco.asJvmArg
+	  String dir = project.buildDir
+	  arg = arg.replaceAll(project.relativePath(dir), dir)
+	  systemProperty 'thorntail.arquillian.jvm.args', arg
+	  systemProperty 'thorntailVersion', thorntailVersion
+	}
+}
+
+// thorntail-gradle-plugin workaround for bug which fails to sync local m2 repo with dependencies when useUberJar=false.
+task syncM2(type: Copy) {
+  from new File(gradle.gradleUserHomeDir, 'caches/modules-2/files-2.1')
+  into repositories.mavenLocal().url
+  eachFile {
+    List<String> parts = it.path.split('/')
+    it.path = (parts[0].replace('.', '/') + '/' + parts[1]).replace('.', '/') + '/' + parts[2] + '/' + parts[4]
+  }
+  includeEmptyDirs false
+}
