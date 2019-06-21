@@ -62,7 +62,7 @@ repositories {
 configurations.all {
   resolutionStrategy {
     // Fail eagerly on version conflict (includes transitive dependencies).
-    failOnVersionConflict()
+    //failOnVersionConflict()
     // Force certain versions of dependencies (including transitive) to stop failOnVersionConflict().
     force 'org.ow2.asm:asm:6.2.1'
 
