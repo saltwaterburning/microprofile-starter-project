@@ -1,10 +1,8 @@
 package org.arj.thornbird.demo.app;
 
-import javax.enterprise.context.ApplicationScoped;
 import javax.ws.rs.ApplicationPath;
 import javax.ws.rs.core.Application;
 
-import org.eclipse.microprofile.auth.LoginConfig;
 import org.eclipse.microprofile.openapi.annotations.ExternalDocumentation;
 import org.eclipse.microprofile.openapi.annotations.OpenAPIDefinition;
 import org.eclipse.microprofile.openapi.annotations.info.Contact;
@@ -12,12 +10,16 @@ import org.eclipse.microprofile.openapi.annotations.info.Info;
 import org.eclipse.microprofile.openapi.annotations.info.License;
 import org.eclipse.microprofile.openapi.annotations.security.SecurityRequirement;
 import org.eclipse.microprofile.openapi.annotations.servers.Server;
-import org.eclipse.microprofile.openapi.annotations.servers.ServerVariable;
 
 // https://blog.payara.fish/building-your-next-microservice-with-eclipse-microprofile
 //@LoginConfig(authMethod = "MP-JWT", realmName = "admin-realm")
 //@ApplicationScoped
-@ApplicationPath("/api")
+
+// https://www.phillip-kruger.com/post/microprofile_openapi_swaggerui/
+// https://github.com/phillip-kruger/microprofile-extensions
+// https://github.com/eclipse/microprofile-config
+// https://apis.guru/awesome-openapi3/category.html
+@ApplicationPath("api")
 @OpenAPIDefinition(info =
   @Info(title = "Sample Project",
       version = "0.0.1",
@@ -34,12 +36,10 @@ import org.eclipse.microprofile.openapi.annotations.servers.ServerVariable;
     @SecurityRequirement(name = "foo", scopes = {})
   },
   servers = {
-    @Server(description = "server 1",
-                    url = "http://foo",
-              variables = {
-        @ServerVariable(name = "var1", description = "var 1", defaultValue = "1", enumeration = {"1", "2"}),
-        @ServerVariable(name = "var2", description = "var 2", defaultValue = "1", enumeration = {"1", "2"})
-      })
+		    @Server(description = "local-http",
+                    url = "http://localhost:8080/"),
+    @Server(description = "local-https",
+                    url = "https://localhost:8080/")
   }
 )
 public class MyApplication extends Application {

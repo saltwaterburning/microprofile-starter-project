@@ -5,10 +5,10 @@
  *     Run: java -jar .\build\libs\sample-project-thorntail.jar
  *
  * Exposed URL's:
- *   http://localhost:8080/health           (System health)
- *   http://localhost:8080/metrics          (System metrics)
- *   http://localhost:8080/openapi          (gets OpenAPI V3 YAML)
- *   http://localhost:8080/swagger-ui/index.html?url=/openapi (View in Swagger UI)
+ *   http://localhost:8080/health          (System health)
+ *   http://localhost:8080/metrics         (System metrics)
+ *   http://localhost:8080/openapi         (OpenAPI V3 YAML)
+ *   http://localhost:8080/api/openapi-ui  (Swagger UI)
  *
  * The buildscript thorntail-gradle-plugin adds the following tasks:
  *   thorntail-package (hooks on build target)
@@ -58,13 +58,14 @@ repositories {
   }
 }
 
-// Resolve potential versioning issues.
+// Assist Thorntail plugin in dependency resolution.
 configurations.all {
   resolutionStrategy {
     // Fail eagerly on version conflict (includes transitive dependencies).
     failOnVersionConflict()
     // Force certain versions of dependencies (including transitive) to stop failOnVersionConflict().
     force 'commons-io:commons-io:2.6',
+          'com.google.guava:guava:14.0.1',
           'javax.annotation:javax.annotation-api:1.2',
           'javax.enterprise:cdi-api:2.0.SP1',
           'org.bitbucket.b_c:jose4j:0.6.5',
@@ -124,7 +125,7 @@ dependencies {
     implementation "io.thorntail:management"
     implementation "io.thorntail:management-console"
 //    implementation "io.thorntail:microprofile"
-//    implementation "io.thorntail:microprofile-config"
+    implementation "io.thorntail:microprofile-config"
 //    implementation "io.thorntail:microprofile-demo"
 //    implementation "io.thorntail:microprofile-fault-tolerance"
 	implementation "io.thorntail:microprofile-health"
@@ -143,8 +144,8 @@ dependencies {
 //    implementation "io.thorntail:undertow" // High performance non-blocking webserver
 	// ...Thorntail fractions
 
-	// Throntail fractions NOT in BOM
-    implementation "io.thorntail:swagger-webapp:$thorntailVersion"
+    // See https://github.com/microprofile-extensions/openapi-ext/blob/master/swagger-ui/README.md
+    implementation 'org.microprofile-ext.openapi-ext:swagger-ui:1.0.1'
 
 	// For demo only...
 	implementation 'com.h2database:h2:1.4.199'
